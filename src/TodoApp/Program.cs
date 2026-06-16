@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddProblemDetails();
 
 var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=todo.db";
 builder.Services.AddDbContext<AppDbContext>(opts => opts.UseSqlite(connectionString));
@@ -28,7 +29,10 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
 }
 
-// Translate business-rule failures into 400s with a plain-text message the UI can show.
+// Any unhandled exception becomes a clean ProblemDetails 500 (no stack trace leak, even in dev).
+app.UseExceptionHandler();
+
+// Business-rule failures become a ProblemDetails 400 carrying the message for the UI to show.
 app.Use(async (context, next) =>
 {
     try
@@ -37,9 +41,8 @@ app.Use(async (context, next) =>
     }
     catch (ValidationException ex)
     {
-        context.Response.StatusCode = StatusCodes.Status400BadRequest;
-        context.Response.ContentType = "text/plain";
-        await context.Response.WriteAsync(ex.Message);
+        await Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest,
+            title: "Validation failed").ExecuteAsync(context);
     }
 });
 
