@@ -121,6 +121,74 @@ public class TasksApiTests : IClassFixture<TodoAppFactory>
         Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
     }
 
+    [Fact]
+    public async Task Patch_WithExplicitNull_ClearsNotesAndDueDate()
+    {
+        var res = await _client.PostAsJsonAsync("/api/tasks",
+            new { title = "Has extras", notes = "some notes", dueDate = "2026-06-18" });
+        var id = (await ReadTask(res)).GetProperty("id").GetInt32();
+
+        // Explicit nulls (present in the body) should clear the fields...
+        var patch = await _client.PatchAsJsonAsync($"/api/tasks/{id}",
+            new { notes = (string?)null, dueDate = (string?)null });
+        Assert.Equal(HttpStatusCode.OK, patch.StatusCode);
+
+        var task = await ReadTask(await _client.GetAsync($"/api/tasks/{id}"));
+        Assert.Equal(JsonValueKind.Null, task.GetProperty("notes").ValueKind);
+        Assert.Equal(JsonValueKind.Null, task.GetProperty("dueDate").ValueKind);
+    }
+
+    [Fact]
+    public async Task Patch_WithOmittedFields_LeavesThemUnchanged()
+    {
+        var res = await _client.PostAsJsonAsync("/api/tasks",
+            new { title = "Keep notes", notes = "keep me" });
+        var id = (await ReadTask(res)).GetProperty("id").GetInt32();
+
+        // Body omits notes entirely — it must not be wiped.
+        await _client.PatchAsJsonAsync($"/api/tasks/{id}", new { status = "Done" });
+
+        var task = await ReadTask(await _client.GetAsync($"/api/tasks/{id}"));
+        Assert.Equal("keep me", task.GetProperty("notes").GetString());
+        Assert.Equal("Done", task.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task DueDate_RoundTripsAsTheSameCalendarDay()
+    {
+        // The date-only contract: the day stored is the day returned, no timezone shift.
+        var res = await _client.PostAsJsonAsync("/api/tasks",
+            new { title = "Due date task", dueDate = "2026-06-18" });
+        var id = (await ReadTask(res)).GetProperty("id").GetInt32();
+
+        var task = await ReadTask(await _client.GetAsync($"/api/tasks/{id}"));
+        Assert.StartsWith("2026-06-18", task.GetProperty("dueDate").GetString());
+    }
+
+    [Fact]
+    public async Task Restore_BringsBackASoftDeletedTask()
+    {
+        var id = await CreateTask("Deleted then restored");
+        await _client.DeleteAsync($"/api/tasks/{id}");
+
+        var restore = await _client.PostAsync($"/api/tasks/{id}/restore", null);
+        Assert.Equal(HttpStatusCode.OK, restore.StatusCode);
+
+        // Reachable again and back in the list.
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync($"/api/tasks/{id}")).StatusCode);
+        var list = await _client.GetFromJsonAsync<JsonElement>("/api/tasks?pageSize=100", Json);
+        var ids = list.GetProperty("items").EnumerateArray().Select(t => t.GetProperty("id").GetInt32());
+        Assert.Contains(id, ids);
+    }
+
+    [Fact]
+    public async Task Restore_OnANonDeletedTask_Returns404()
+    {
+        var id = await CreateTask("Still alive");
+        var restore = await _client.PostAsync($"/api/tasks/{id}/restore", null);
+        Assert.Equal(HttpStatusCode.NotFound, restore.StatusCode);
+    }
+
     // ---- helpers ----
 
     private async Task<int> CreateTask(string title)
