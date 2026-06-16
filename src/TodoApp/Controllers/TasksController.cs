@@ -52,4 +52,11 @@ public class TasksController(TaskService tasks) : ControllerBase
         var deleted = await tasks.DeleteAsync(id, ct);
         return deleted ? NoContent() : NotFound();
     }
+
+    [HttpPost("{id:int}/restore")]
+    public async Task<IActionResult> Restore(int id, CancellationToken ct)
+    {
+        var restored = await tasks.RestoreAsync(id, ct);
+        return restored is null ? NotFound() : Ok(restored);
+    }
 }

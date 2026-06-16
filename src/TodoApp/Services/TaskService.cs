@@ -100,7 +100,19 @@ public class TaskService(AppDbContext db)
         return true;
     }
 
-    private static string ValidateTitle(string title)
+    public async Task<TaskDto?> RestoreAsync(int id, CancellationToken ct = default)
+    {
+        // The global query filter hides soft-deleted rows, so bypass it to find one to restore.
+        var task = await db.Tasks.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == id && t.DeletedAt != null, ct);
+        if (task is null) return null;
+        task.DeletedAt = null;
+        task.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return Map(task);
+    }
+
+    private static string ValidateTitle(string? title)
     {
         var trimmed = title?.Trim() ?? "";
         if (trimmed.Length == 0) throw new ValidationException("Title is required.");

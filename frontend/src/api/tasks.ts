@@ -61,4 +61,7 @@ export const tasksApi = {
 
   delete: (id: number) =>
     api.delete(`/tasks/${id}`),
+
+  restore: (id: number) =>
+    api.post<Task>(`/tasks/${id}/restore`).then((r) => r.data),
 };
