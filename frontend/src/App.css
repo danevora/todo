@@ -204,3 +204,32 @@ body {
   cursor: pointer;
   padding: 0 4px;
 }
+
+/* Info / undo banner */
+.banner-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+.banner-action {
+  background: none;
+  border: none;
+  color: #93c5fd;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.banner-action:hover { text-decoration: underline; }
+
+.task-actions button:disabled,
+.task-actions select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

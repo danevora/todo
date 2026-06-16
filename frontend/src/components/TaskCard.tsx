@@ -21,12 +21,13 @@ function formatDueDate(iso: string): string {
 
 interface Props {
   task: Task;
+  busy?: boolean;
   onEdit: (task: Task) => void;
   onDelete: (id: number) => void;
   onStatusChange: (id: number, status: Task["status"]) => void;
 }
 
-export default function TaskCard({ task, onEdit, onDelete, onStatusChange }: Props) {
+export default function TaskCard({ task, busy, onEdit, onDelete, onStatusChange }: Props) {
   return (
     <div className="task-card">
       <div className="task-header">
@@ -43,14 +44,15 @@ export default function TaskCard({ task, onEdit, onDelete, onStatusChange }: Pro
       <div className="task-actions">
         <select
           value={task.status}
+          disabled={busy}
           onChange={(e) => onStatusChange(task.id, e.target.value as Task["status"])}
         >
           <option>Todo</option>
           <option>InProgress</option>
           <option>Done</option>
         </select>
-        <button onClick={() => onEdit(task)}>Edit</button>
-        <button className="btn-danger" onClick={() => onDelete(task.id)}>Delete</button>
+        <button onClick={() => onEdit(task)} disabled={busy}>Edit</button>
+        <button className="btn-danger" onClick={() => onDelete(task.id)} disabled={busy}>Delete</button>
       </div>
     </div>
   );
