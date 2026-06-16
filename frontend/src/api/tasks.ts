@@ -32,7 +32,7 @@ export interface TaskFilters {
 
 export interface CreateTaskPayload {
   title: string;
-  notes?: string;
+  notes?: string | null;
   status?: TaskStatus;
   priority?: Priority;
   dueDate?: string | null;
@@ -40,7 +40,7 @@ export interface CreateTaskPayload {
 
 export interface PatchTaskPayload {
   title?: string;
-  notes?: string;
+  notes?: string | null;
   status?: TaskStatus;
   priority?: Priority;
   dueDate?: string | null;

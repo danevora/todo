@@ -19,12 +19,14 @@ public record CreateTaskRequest(
     DateTime? DueDate
 );
 
+// Optional<> fields so a partial update can tell "leave unchanged" (omitted)
+// apart from "clear this field" (explicit null) for the nullable Notes/DueDate.
 public record PatchTaskRequest(
-    string? Title,
-    string? Notes,
-    string? Status,
-    string? Priority,
-    DateTime? DueDate
+    Optional<string?> Title,
+    Optional<string?> Notes,
+    Optional<string?> Status,
+    Optional<string?> Priority,
+    Optional<DateTime?> DueDate
 );
 
 public record PagedResult<T>(

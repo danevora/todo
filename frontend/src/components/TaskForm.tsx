@@ -25,7 +25,8 @@ export default function TaskForm({ initial, onSubmit, onCancel, loading, serverE
     e.preventDefault();
     if (!title.trim()) { setError("Title is required."); return; }
     setError("");
-    onSubmit({ title, notes: notes || undefined, status, priority, dueDate: dueDate || null });
+    // Send null (not undefined) for empty notes/date so an edit can clear them.
+    onSubmit({ title: title.trim(), notes: notes.trim() || null, status, priority, dueDate: dueDate || null });
   }
 
   return (

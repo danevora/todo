@@ -78,11 +78,13 @@ public class TaskService(AppDbContext db)
         var task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id, ct);
         if (task is null) return null;
 
-        if (req.Title is not null) task.Title = ValidateTitle(req.Title);
-        if (req.Notes is not null) task.Notes = req.Notes;
-        if (req.Status is not null) task.Status = ParseStatus(req.Status)!.Value;
-        if (req.Priority is not null) task.Priority = ParsePriority(req.Priority)!.Value;
-        if (req.DueDate is not null) task.DueDate = req.DueDate;
+        // Title/Status/Priority aren't nullable, so a null value is a no-op for them;
+        // Notes/DueDate are clearable, so an explicit null (IsSet) wipes them.
+        if (req.Title.IsSet) task.Title = ValidateTitle(req.Title.Value);
+        if (req.Notes.IsSet) task.Notes = req.Notes.Value;
+        if (req.Status is { IsSet: true, Value: not null }) task.Status = ParseStatus(req.Status.Value)!.Value;
+        if (req.Priority is { IsSet: true, Value: not null }) task.Priority = ParsePriority(req.Priority.Value)!.Value;
+        if (req.DueDate.IsSet) task.DueDate = req.DueDate.Value;
         task.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
