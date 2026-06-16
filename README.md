@@ -51,6 +51,7 @@ dotnet test
 | `POST` | `/api/tasks` | Create a task |
 | `PATCH` | `/api/tasks/{id}` | Partial update |
 | `DELETE` | `/api/tasks/{id}` | Soft delete |
+| `POST` | `/api/tasks/{id}/restore` | Restore a soft-deleted task |
 
 `GET /api/tasks` query params: `page` (default 1), `pageSize` (default 20, max 100),
 `status` (`Todo`/`InProgress`/`Done`), `priority` (`Low`/`Medium`/`High`),
@@ -67,12 +68,16 @@ the service talks to `DbContext` directly.
 
 - **Validation.** Bad input is rejected with `400`, not silently accepted: empty/whitespace
   titles, titles over 500 chars, unknown `status`/`priority` values, and out-of-range
-  pagination. Error messages come back as plain text and are shown in the UI.
-- **Soft delete.** `DELETE` sets `DeletedAt`; an EF Core global query filter hides those rows
-  from every read. Nothing is physically removed.
+  pagination. All errors (400s and 404s) come back as RFC-7807 ProblemDetails JSON, and the
+  `detail` message is shown in the UI.
+- **Soft delete with undo.** `DELETE` sets `DeletedAt` and an EF Core global query filter hides
+  those rows from every read; nothing is physically removed. `POST /api/tasks/{id}/restore`
+  brings a task back, and the UI surfaces an "Undo" action right after a delete.
 - **Status as an enum** (`Todo`/`InProgress`/`Done`) rather than a boolean, so adding states
   later doesn't require a data migration.
-- **PATCH, not PUT.** Updates send only changed fields; `null` fields are left untouched.
+- **PATCH, not PUT.** Updates send only the fields they include. Omitting a field leaves it
+  unchanged; sending an explicit `null` for `notes`/`dueDate` clears it (an `Optional<T>`
+  wrapper distinguishes "absent" from "null" in the request body).
 - **Due dates are date-only.** The UI sends and renders `YYYY-MM-DD` and formats from the date
   part directly, so the displayed day never shifts across timezones.
 - **Live updates.** Create / edit / delete / status-change invalidate the task query, so the
@@ -96,8 +101,10 @@ ownership check (and tests) on every read and write.
 SQLite database (real SQL, not EF In-Memory). It focuses on the two highest-risk areas:
 
 - **Validation** — empty titles, unknown enum values, and bad page sizes return `400`.
-- **Core CRUD + soft delete** — create/get/patch round-trip and persist; a deleted task
-  returns `404` and disappears from the list.
+- **Core CRUD + soft delete + restore** — create/get/patch round-trip and persist; a deleted
+  task returns `404` and leaves the list, and restore brings it back.
+- **PATCH semantics** — an omitted field is left unchanged while an explicit `null` clears it.
+- **Date-only contract** — a due date round-trips as the same calendar day (no timezone shift).
 
 Ownership tests are absent on purpose — there's no auth to enforce (see above).
 
