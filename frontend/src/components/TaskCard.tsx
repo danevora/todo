@@ -29,7 +29,7 @@ interface Props {
 
 export default function TaskCard({ task, busy, onEdit, onDelete, onStatusChange }: Props) {
   return (
-    <div className="task-card">
+    <div className="task-card" data-priority={task.priority} data-status={task.status}>
       <div className="task-header">
         <span className={`badge ${statusBadge[task.status]}`}>{task.status}</span>
         <span className="priority-dot" style={{ color: priorityColor[task.priority] }}>
