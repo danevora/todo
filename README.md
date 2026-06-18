@@ -17,6 +17,10 @@ A task management app: .NET 8 Web API + SQLite on the backend, React + TanStack 
 - .NET 8 SDK
 - Node.js 18+
 
+The backend and frontend run as two separate processes — start the backend first, then
+the frontend in a second terminal. The frontend calls the API at `http://localhost:5120`
+by default (override with `VITE_API_URL`).
+
 ### Backend
 
 ```bash
