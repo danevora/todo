@@ -12,6 +12,7 @@ namespace TodoApp.Services;
 public class TaskService(AppDbContext db)
 {
     private const int MaxTitleLength = 500;
+    private const int MaxNotesLength = 5000;
 
     public async Task<PagedResult<TaskDto>> GetAllAsync(
         int page, int pageSize,
@@ -60,7 +61,7 @@ public class TaskService(AppDbContext db)
         var task = new TodoTask
         {
             Title = title,
-            Notes = req.Notes,
+            Notes = ValidateNotes(req.Notes),
             Status = ParseStatus(req.Status) ?? TodoTaskStatus.Todo,
             Priority = ParsePriority(req.Priority) ?? Priority.Medium,
             DueDate = req.DueDate,
@@ -81,7 +82,7 @@ public class TaskService(AppDbContext db)
         // Title/Status/Priority aren't nullable, so a null value is a no-op for them;
         // Notes/DueDate are clearable, so an explicit null (IsSet) wipes them.
         if (req.Title.IsSet) task.Title = ValidateTitle(req.Title.Value);
-        if (req.Notes.IsSet) task.Notes = req.Notes.Value;
+        if (req.Notes.IsSet) task.Notes = ValidateNotes(req.Notes.Value);
         if (req.Status is { IsSet: true, Value: not null }) task.Status = ParseStatus(req.Status.Value)!.Value;
         if (req.Priority is { IsSet: true, Value: not null }) task.Priority = ParsePriority(req.Priority.Value)!.Value;
         if (req.DueDate.IsSet) task.DueDate = req.DueDate.Value;
@@ -119,6 +120,15 @@ public class TaskService(AppDbContext db)
         if (trimmed.Length > MaxTitleLength)
             throw new ValidationException($"Title must be {MaxTitleLength} characters or fewer.");
         return trimmed;
+    }
+
+    // Notes are optional and free-form (whitespace/newlines kept as typed), but bounded
+    // so a client can't store an unbounded blob — SQLite ignores the column max length.
+    private static string? ValidateNotes(string? notes)
+    {
+        if (notes is { Length: > MaxNotesLength })
+            throw new ValidationException($"Notes must be {MaxNotesLength} characters or fewer.");
+        return notes;
     }
 
     // A null/empty filter value means "no filter"; a non-empty but invalid value is a client error.

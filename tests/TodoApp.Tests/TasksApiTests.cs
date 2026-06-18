@@ -56,6 +56,23 @@ public class TasksApiTests : IClassFixture<TodoAppFactory>
         Assert.Equal(HttpStatusCode.BadRequest, (await _client.GetAsync("/api/tasks?pageSize=999")).StatusCode);
     }
 
+    [Fact]
+    public async Task Create_WithOverlongNotes_Returns400()
+    {
+        var res = await _client.PostAsJsonAsync("/api/tasks",
+            new { title = "Valid", notes = new string('x', 5001) });
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Patch_WithOverlongNotes_Returns400()
+    {
+        var id = await CreateTask("Valid");
+        var res = await _client.PatchAsJsonAsync($"/api/tasks/{id}",
+            new { notes = new string('x', 5001) });
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
     // ---- Core CRUD + soft-delete persist round-trip ----
 
     [Fact]
@@ -187,6 +204,27 @@ public class TasksApiTests : IClassFixture<TodoAppFactory>
         var id = await CreateTask("Still alive");
         var restore = await _client.PostAsync($"/api/tasks/{id}/restore", null);
         Assert.Equal(HttpStatusCode.NotFound, restore.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAll_SortByPriority_OrdersBySeverityNotAlphabetically()
+    {
+        foreach (var p in new[] { "High", "Low", "Medium" })
+            await _client.PostAsJsonAsync("/api/tasks", new { title = $"{p} task", priority = p });
+
+        var list = await _client.GetFromJsonAsync<JsonElement>(
+            "/api/tasks?sortBy=priority&sortDesc=false&pageSize=100", Json);
+        var priorities = list.GetProperty("items").EnumerateArray()
+            .Select(t => t.GetProperty("priority").GetString())
+            .Where(p => p is "Low" or "Medium" or "High")
+            .ToList();
+
+        // Ascending must be Low < Medium < High, never alphabetical (High, Low, Medium).
+        var lowIdx = priorities.IndexOf("Low");
+        var medIdx = priorities.IndexOf("Medium");
+        var highIdx = priorities.IndexOf("High");
+        Assert.True(lowIdx < medIdx && medIdx < highIdx,
+            $"Expected Low < Medium < High, got: {string.Join(", ", priorities)}");
     }
 
     // ---- helpers ----

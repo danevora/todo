@@ -67,9 +67,9 @@ the service talks to `DbContext` directly.
 ## Notable behavior
 
 - **Validation.** Bad input is rejected with `400`, not silently accepted: empty/whitespace
-  titles, titles over 500 chars, unknown `status`/`priority` values, and out-of-range
-  pagination. All errors (400s and 404s) come back as RFC-7807 ProblemDetails JSON, and the
-  `detail` message is shown in the UI.
+  titles, titles over 500 chars, notes over 5000 chars, unknown `status`/`priority` values,
+  and out-of-range pagination. All errors (400s and 404s) come back as RFC-7807 ProblemDetails
+  JSON, and the `detail` message is shown in the UI.
 - **Soft delete with undo.** `DELETE` sets `DeletedAt` and an EF Core global query filter hides
   those rows from every read; nothing is physically removed. `POST /api/tasks/{id}/restore`
   brings a task back, and the UI surfaces an "Undo" action right after a delete.
